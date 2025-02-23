@@ -9,6 +9,7 @@ import type {
 } from '../../api/types';
 import type {
   ActiveEmojiInteraction,
+  IThemeSettings,
   MessageListType,
   ThemeKey,
   ThreadId,
@@ -100,6 +101,9 @@ import MiddleSearch from './search/MiddleSearch.async';
 
 import './MiddleColumn.scss';
 import styles from './MiddleColumn.module.scss';
+import WebGLBackground, { DEFAULT_GRADIENT } from '../ui/WebGLBackground';
+import { GlobalState } from '../../global/types';
+import { useWebGL } from '../../hooks/useWebGL';
 
 interface OwnProps {
   leftColumnRef: React.RefObject<HTMLDivElement>;
@@ -152,6 +156,7 @@ type StateProps = {
   canShowOpenChatButton?: boolean;
   isContactRequirePremium?: boolean;
   topics?: Record<number, ApiTopic>;
+  customTheme?: IThemeSettings;
 };
 
 function isImage(item: DataTransferItem) {
@@ -212,6 +217,7 @@ function MiddleColumn({
   canShowOpenChatButton,
   isContactRequirePremium,
   topics,
+  customTheme,
 }: OwnProps & StateProps) {
   const {
     openChat,
@@ -234,6 +240,7 @@ function MiddleColumn({
   const { isTablet, isDesktop } = useAppLayout();
 
   const lang = useOldLang();
+  const isWebGLSupported = useWebGL();
   const [dropAreaState, setDropAreaState] = useState(DropAreaState.None);
   const [isScrollDownNeeded, setIsScrollDownShown] = useState(false);
   const isScrollDownShown = isScrollDownNeeded && (!isMobile || !hasActiveMiddleSearch);
@@ -283,6 +290,28 @@ function MiddleColumn({
     chatId,
     isMobile,
   );
+
+  const customThemeSettings = useMemo(() => {
+    if (!customTheme) return false;
+    const { background, backgroundColor, patternColor } = customTheme;
+
+    const gradientColors = backgroundColor?.split(":") || [];
+    const gradient = {
+      color1: gradientColors[0] || DEFAULT_GRADIENT.color1,
+      color2: gradientColors[1] || DEFAULT_GRADIENT.color2,
+      color3: gradientColors[2] || DEFAULT_GRADIENT.color3,
+      color4: gradientColors[3] || DEFAULT_GRADIENT.color4,
+    };
+
+    const [pattern, size] = background?.split(":") || [];
+
+    return {
+      maskImage: pattern,
+      size: size ? Number(size) : undefined,
+      patternColor,
+      gradient
+    };
+  }, [customTheme]);
 
   useEffect(() => {
     return chatId
@@ -493,6 +522,11 @@ function MiddleColumn({
       )}
       onClick={(isTablet && isLeftColumnShown) ? handleTabletFocus : undefined}
     >
+      {isWebGLSupported && customThemeSettings && (
+        <WebGLBackground
+          pattern={customThemeSettings}
+        />
+      )}
       {isDesktop && (
         <div
           className="resize-handle"
@@ -606,18 +640,18 @@ function MiddleColumn({
                 {(
                   isMobile && (renderingCanSubscribe || (renderingShouldJoinToSend && !renderingShouldSendJoinRequest))
                 ) && (
-                  <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
-                    <Button
-                      size="tiny"
-                      fluid
-                      ripple
-                      className="composer-button join-subscribe-button"
-                      onClick={handleSubscribeClick}
-                    >
-                      {lang(renderingIsChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
-                    </Button>
-                  </div>
-                )}
+                    <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
+                      <Button
+                        size="tiny"
+                        fluid
+                        ripple
+                        className="composer-button join-subscribe-button"
+                        onClick={handleSubscribeClick}
+                      >
+                        {lang(renderingIsChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
+                      </Button>
+                    </div>
+                  )}
                 {isMobile && renderingShouldSendJoinRequest && (
                   <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
                     <Button
@@ -719,6 +753,7 @@ export default memo(withGlobal<OwnProps>(
     const {
       isBlurred: isBackgroundBlurred, background: customBackground, backgroundColor, patternColor,
     } = global.settings.themes[theme] || {};
+    const customTheme = global.settings.themes[`custom-${theme}` as ThemeKey];
 
     const {
       messageLists, isLeftColumnShown, activeEmojiInteractions,
@@ -746,6 +781,7 @@ export default memo(withGlobal<OwnProps>(
       currentTransitionKey: Math.max(0, messageLists.length - 1),
       activeEmojiInteractions,
       leftColumnWidth,
+      customTheme,
     };
 
     if (!currentMessageList) {
@@ -791,7 +827,7 @@ export default memo(withGlobal<OwnProps>(
     const canUnpin = chat && (
       isPrivate || (
         chat?.isCreator || (!isChannel && !isUserRightBanned(chat, 'pinMessages'))
-          || getHasAdminRight(chat, 'pinMessages')
+        || getHasAdminRight(chat, 'pinMessages')
       )
     );
 

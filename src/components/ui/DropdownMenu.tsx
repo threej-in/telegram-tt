@@ -1,6 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
 import React, {
-  useCallback, useMemo, useRef, useState,
+  useCallback, useMemo, useRef, useState, useEffect,
 } from '../../lib/teact/teact';
 
 import Icon from '../common/icons/Icon';
@@ -25,6 +25,7 @@ type OwnProps = {
   onMouseEnterBackdrop?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   children: React.ReactNode;
   autoClose?: boolean;
+  triggerRef?: { current: { toggle: () => void } };
 };
 
 const DropdownMenu: FC<OwnProps> = ({
@@ -43,12 +44,13 @@ const DropdownMenu: FC<OwnProps> = ({
   onMouseEnterBackdrop,
   onHide,
   autoClose = true,
+  triggerRef,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const menuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  const toggleIsOpen = () => {
+  const toggleIsOpen = useCallback(() => {
     setIsOpen(!isOpen);
 
     if (isOpen) {
@@ -56,7 +58,13 @@ const DropdownMenu: FC<OwnProps> = ({
     } else {
       onOpen?.();
     }
-  };
+  }, [isOpen, onClose, onOpen]);
+
+  useEffect(() => {
+    if (triggerRef) {
+      triggerRef.current = { toggle: toggleIsOpen };
+    }
+  }, [toggleIsOpen, triggerRef]);
 
   const handleKeyDown = (e: React.KeyboardEvent<any>) => {
     const menu = menuRef.current;

@@ -39,6 +39,7 @@ type OwnProps = {
   isElectronUpdateAvailable?: boolean;
   isForumPanelOpen?: boolean;
   isClosingSearch?: boolean;
+  dropdownRef?: { current: { toggle: () => void } };
   onSearchQuery: (query: string) => void;
   onContentChange: (content: LeftColumnContent) => void;
   onSettingsScreenSelect: (screen: SettingsScreens) => void;
@@ -67,6 +68,7 @@ const LeftMain: FC<OwnProps> = ({
   onSettingsScreenSelect,
   onReset,
   onTopicSearch,
+  dropdownRef,
 }) => {
   const { closeForumPanel } = getActions();
   const [isNewChatButtonShown, setIsNewChatButtonShown] = useState(IS_TOUCH_ENV);
@@ -181,6 +183,7 @@ const LeftMain: FC<OwnProps> = ({
         onReset={onReset}
         shouldSkipTransition={shouldSkipTransition}
         isClosingSearch={isClosingSearch}
+        dropdownRef={dropdownRef}
       />
       <Transition
         name={shouldSkipTransition ? 'none' : 'zoomFade'}

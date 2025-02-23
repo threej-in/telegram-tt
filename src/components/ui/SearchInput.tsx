@@ -18,10 +18,12 @@ import Loading from './Loading';
 import Transition from './Transition';
 
 import './SearchInput.scss';
+import { LeftColumnContent } from '../../types';
 
 type OwnProps = {
   ref?: RefObject<HTMLInputElement>;
   children?: React.ReactNode;
+  content?: LeftColumnContent;
   resultsItemSelector?: string;
   className?: string;
   inputId?: string;
@@ -48,11 +50,13 @@ type OwnProps = {
   onUpClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDownClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onSpinnerClick?: NoneToVoidFunction;
+  rightElement?: React.ReactNode;
 };
 
 const SearchInput: FC<OwnProps> = ({
   ref,
   children,
+  content,
   resultsItemSelector,
   value,
   inputId,
@@ -79,6 +83,7 @@ const SearchInput: FC<OwnProps> = ({
   onUpClick,
   onDownClick,
   onSpinnerClick,
+  rightElement,
 }) => {
   // eslint-disable-next-line no-null/no-null
   let inputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +142,8 @@ const SearchInput: FC<OwnProps> = ({
       onStartBackspace?.();
     }
   });
+
+  const shouldShowCloseButton = Boolean(value || canClose || content === LeftColumnContent.GlobalSearch);
 
   return (
     <div
@@ -200,17 +207,18 @@ const SearchInput: FC<OwnProps> = ({
           <Icon name="down" />
         </Button>
       )}
+      <div className="right-element">{rightElement}</div>
       <Transition
         name="fade"
         shouldCleanup
         activeKey={Number(isLoading)}
-        className="icon-container-right"
+        className={buildClassName('icon-container-right', !shouldShowCloseButton && 'hide')}
         slideClassName="icon-container-slide"
       >
         {withBackIcon && isLoading ? (
           <Loading color={spinnerColor} backgroundColor={spinnerBackgroundColor} onClick={onSpinnerClick} />
         ) : (
-          (value || canClose) && onReset && (
+          shouldShowCloseButton && (
             <Button
               round
               size="tiny"

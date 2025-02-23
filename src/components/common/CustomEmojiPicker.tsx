@@ -1,6 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
 import React, {
-  memo, useEffect, useMemo, useRef,
+  memo, useEffect, useMemo, useRef, useCallback, useState,
 } from '../../lib/teact/teact';
 import { getGlobal, withGlobal } from '../../global';
 
@@ -51,9 +51,28 @@ import Loading from '../ui/Loading';
 import Icon from './icons/Icon';
 import StickerButton from './StickerButton';
 import StickerSet from './StickerSet';
+import InputText from '../ui/InputText';
 
 import pickerStyles from '../middle/composer/StickerPicker.module.scss';
 import styles from './CustomEmojiPicker.module.scss';
+import folderIcon from '../../assets/icons/forFolder/folder.svg';
+import botIcon from '../../assets/icons/forFolder/bot.svg';
+import groupIcon from '../../assets/icons/forFolder/group.svg';
+import starIcon from '../../assets/icons/forFolder/star.svg';
+import userIcon from '../../assets/icons/forFolder/user.svg';
+import channelIcon from '../../assets/icons/forFolder/channel.svg';
+import chatsIcon from '../../assets/icons/forFolder/chats.svg';
+
+export const FOLDER_ICONS = [
+  { id: 'all', emoji: '💬', src: chatsIcon },
+  { id: 'bot', emoji: '🤖', src: botIcon },
+  { id: 'channel', emoji: '📢', src: channelIcon },
+  { id: 'chats', emoji: '💬', src: chatsIcon },
+  { id: 'folder', emoji: '📁', src: folderIcon },
+  { id: 'group', emoji: '👥', src: groupIcon },
+  { id: 'star', emoji: '⭐', src: starIcon },
+  { id: 'user', emoji: '👤', src: userIcon },
+];
 
 type OwnProps = {
   chatId?: string;
@@ -64,9 +83,11 @@ type OwnProps = {
   idPrefix?: string;
   withDefaultTopicIcons?: boolean;
   selectedReactionIds?: string[];
+  isFolderPicker?: boolean;
   isStatusPicker?: boolean;
   isReactionPicker?: boolean;
   isTranslucent?: boolean;
+  onFolderIconSelect?: (icon: string) => void;
   onCustomEmojiSelect: (sticker: ApiSticker) => void;
   onReactionSelect?: (reaction: ApiReactionWithPaid) => void;
   onReactionContext?: (reaction: ApiReactionWithPaid) => void;
@@ -130,6 +151,7 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
   canAnimate,
   isReactionPicker,
   isStatusPicker,
+  isFolderPicker,
   isTranslucent,
   isSavedMessages,
   isCurrentUserPremium,
@@ -138,6 +160,7 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
   defaultStatusIconsId,
   defaultTagReactions,
   isWithPaidReaction,
+  onFolderIconSelect,
   onCustomEmojiSelect,
   onReactionSelect,
   onReactionContext,
@@ -153,6 +176,7 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
   const sharedCanvasRef = useRef<HTMLCanvasElement>(null);
   // eslint-disable-next-line no-null/no-null
   const sharedCanvasHqRef = useRef<HTMLCanvasElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { isMobile } = useAppLayout();
   const {
@@ -307,10 +331,62 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
     isWithPaidReaction, collectibleStatusEmojis, lang,
   ]);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    searchInputRef.current?.focus();
+  }, []);
+
+  const filteredSets = useMemo(() => {
+    if (!searchQuery) return allSets;
+
+    const query = searchQuery.toLowerCase();
+
+    // First find all unique emojis that match the query
+    const matchingEmojis = new Set<string>();
+    allSets.forEach((set) => {
+      if ('stickers' in set) {
+        // Check if the set title matches
+        const setTitle = stickerSetsById[set.id]?.title?.toLowerCase() || '';
+        const isTitleMatch = setTitle.includes(query);
+
+        set.stickers?.forEach((sticker) => {
+          // Add sticker if its emoji matches or its set title matches
+          if ((sticker.emoji && sticker.emoji.toLowerCase().includes(query)) || isTitleMatch) {
+            matchingEmojis.add(sticker.emoji || '');
+          }
+        });
+      }
+    });
+
+    // Then filter sets to only include stickers with matching emojis
+    return allSets.map((set) => {
+      if ('stickers' in set) {
+        const setTitle = stickerSetsById[set.id]?.title?.toLowerCase() || '';
+        const isTitleMatch = setTitle.includes(query);
+
+        const filteredStickers = set.stickers?.filter((sticker) => {
+          return isTitleMatch || (sticker.emoji && matchingEmojis.has(sticker.emoji));
+        });
+
+        return {
+          ...set,
+          stickers: filteredStickers,
+        };
+      }
+      return set;
+    }).filter((set) => {
+      if ('stickers' in set) {
+        return set.stickers && set.stickers.length > 0;
+      }
+      return true;
+    });
+  }, [allSets, searchQuery, stickerSetsById]);
+
   const noPopulatedSets = useMemo(() => (
     areAddedLoaded
-    && allSets.filter((set) => set.stickers?.length).length === 0
-  ), [allSets, areAddedLoaded]);
+    && filteredSets.filter((set) => 'stickers' in set && set.stickers?.length).length === 0
+  ), [filteredSets, areAddedLoaded]);
 
   const canRenderContent = useAsyncRendering([], SLIDE_TRANSITION_DURATION);
   const shouldRenderContent = areAddedLoaded && canRenderContent && !noPopulatedSets;
@@ -337,7 +413,13 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
     onCustomEmojiSelect(emoji);
   });
 
-  function renderCover(stickerSet: StickerSetOrReactionsSetOrRecent, index: number) {
+  useEffect(() => {
+    if (searchInputRef.current && searchQuery) {
+      searchInputRef.current.focus();
+    }
+  }, [searchQuery]);
+
+  const renderCover = (stickerSet: StickerSetOrReactionsSetOrRecent, index: number) => {
     const firstSticker = stickerSet.stickers?.[0];
     const buttonClassName = buildClassName(
       pickerStyles.stickerCover,
@@ -398,13 +480,38 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
         forcePlayback
       />
     );
-  }
+  };
+
+  const renderFolderIcons = () => {
+    return (
+      <div className={styles.folderIconWrapper}>
+        {FOLDER_ICONS.map((item) => (
+          <img
+            key={item.id}
+            src={item.src}
+            alt={item.id}
+            className={styles.folderIcon}
+            onClick={() => onFolderIconSelect?.(item.emoji)}
+          />
+        ))}
+      </div>
+    );
+  };
 
   const fullClassName = buildClassName('StickerPicker', styles.root, className);
 
   if (!shouldRenderContent) {
     return (
       <div className={fullClassName}>
+        <div className={styles.searchWrapper}>
+          <InputText
+            ref={searchInputRef}
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder="Search emojis..."
+            className={styles.searchInput}
+          />
+        </div>
         {noPopulatedSets ? (
           <div className={pickerStyles.pickerDisabled}>{oldLang('NoStickers')}</div>
         ) : (
@@ -436,15 +543,25 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
         <div className="shared-canvas-container">
           <canvas ref={sharedCanvasRef} className="shared-canvas" />
           <canvas ref={sharedCanvasHqRef} className="shared-canvas" />
-          {allSets.map(renderCover)}
+          {filteredSets.map(renderCover)}
         </div>
+      </div>
+      <div className={styles.searchWrapper}>
+        <InputText
+          ref={searchInputRef}
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search emojis..."
+          className={styles.searchInput}
+        />
       </div>
       <div
         ref={containerRef}
         onScroll={handleContentScroll}
         className={listClassName}
       >
-        {allSets.map((stickerSet, i) => {
+        {isFolderPicker && renderFolderIcons()}
+        {filteredSets.map((stickerSet, i) => {
           const shouldHideHeader = stickerSet.id === TOP_SYMBOL_SET_ID
             || (stickerSet.id === RECENT_SYMBOL_SET_ID && (withDefaultTopicIcons || isStatusPicker));
           const isChatEmojiSet = stickerSet.id === chatEmojiSetId;

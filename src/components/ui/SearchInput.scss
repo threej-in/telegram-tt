@@ -62,10 +62,21 @@
     margin-inline-start: 0.75rem;
   }
 
+  .right-element {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+  }
+
   .icon-container-right {
     width: 2.5rem;
     flex-shrink: 0;
     margin-inline-start: 0.5rem;
+  }
+
+  .icon-container-right.hide {
+    display: none;
   }
 
   .icon-container-slide {

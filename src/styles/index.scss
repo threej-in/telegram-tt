@@ -165,13 +165,15 @@ body.cursor-ew-resize {
 
 .custom-scroll,
 .custom-scroll-x {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.3s ease;
-
   -webkit-overflow-scrolling: touch;
   // Fix scroll lock on iOS
   pointer-events: auto;
+
+  &::-webkit-scrollbar {
+    width: 0.5rem;
+    background-color: transparent;
+    border-radius: 1rem;
+  }
 
   &::-webkit-scrollbar-thumb {
     background-color: transparent;
@@ -183,8 +185,6 @@ body.cursor-ew-resize {
   &:hover,
   &:focus,
   &:focus-within {
-    scrollbar-color: var(--color-scrollbar) transparent;
-
     &::-webkit-scrollbar-thumb {
       background-color: var(--color-scrollbar);
     }

@@ -513,4 +513,8 @@ export default {
   FullDateTimeFormat: '%@, %@',
   ProfileOpenAppTerms: 'Terms of Service for Mini Apps',
   ProfileBotOpenAppInfoLink: 'https://telegram.org/tos/mini-apps',
+  'TabsView': 'Tabs view',
+  'ChatFoldersTabVertical': 'Tabs on the left',
+  'ChatFoldersTabHorizontal': 'Tabs at the top',
+  'CustomBackground': 'Custom Background',
 } as ApiOldLangPack;

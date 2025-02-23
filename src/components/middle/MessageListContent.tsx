@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import type { FC } from '../../lib/teact/teact';
-import React, { getIsHeavyAnimating, memo } from '../../lib/teact/teact';
-import { getActions } from '../../global';
+import React, { getIsHeavyAnimating, memo, useCallback, useRef, useState } from '../../lib/teact/teact';
+import { getActions, withGlobal } from '../../global';
 
 import type { MessageListType, ThreadId } from '../../types';
 import type { Signal } from '../../util/signals';
@@ -35,6 +35,8 @@ import SenderGroupContainer from './message/SenderGroupContainer';
 import SponsoredMessage from './message/SponsoredMessage';
 import MessageListBotInfo from './MessageListBotInfo';
 
+import { selectIsInSelectMode } from '../../global/selectors';
+
 interface OwnProps {
   canShowAds?: boolean;
   chatId: string;
@@ -65,9 +67,13 @@ interface OwnProps {
   onIntersectPinnedMessage: OnIntersectPinnedMessage;
 }
 
+interface StateProps {
+  isInSelectMode?: boolean;
+}
+
 const UNREAD_DIVIDER_CLASS = 'unread-divider';
 
-const MessageListContent: FC<OwnProps> = ({
+const MessageListContent: FC<OwnProps & StateProps> = ({
   canShowAds,
   chatId,
   threadId,
@@ -95,8 +101,9 @@ const MessageListContent: FC<OwnProps> = ({
   onScrollDownToggle,
   onNotchToggle,
   onIntersectPinnedMessage,
+  isInSelectMode,
 }) => {
-  const { openHistoryCalendar } = getActions();
+  const { openHistoryCalendar, toggleMessageSelection } = getActions();
 
   const getIsHeavyAnimating2 = getIsHeavyAnimating;
   const getIsReady = useDerivedSignal(() => isReady && !getIsHeavyAnimating2(), [isReady, getIsHeavyAnimating2]);
@@ -142,6 +149,45 @@ const MessageListContent: FC<OwnProps> = ({
   const isNewMessage = Boolean(
     messageIds && prevMessageIds && messageIds[messageIds.length - 2] === prevMessageIds[prevMessageIds.length - 1],
   );
+
+  const [isDragging, setIsDragging] = useState(0);
+  const dragStartMessageId = useRef<number | null>(null);
+  const lastHoveredMessageId = useRef<number | null>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return; // Only handle left mouse button
+
+    const messageElement = (e.target as HTMLElement).closest('[data-message-id]');
+    if (!messageElement) return;
+
+    const messageId = Number(messageElement.getAttribute('data-message-id'));
+    if (!messageId) return;
+
+    dragStartMessageId.current = messageId;
+    lastHoveredMessageId.current = messageId;
+    setIsDragging(1);
+  }, [isInSelectMode, toggleMessageSelection]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !dragStartMessageId.current) return;
+
+    const messageElement = (e.target as HTMLElement).closest('[data-message-id]');
+    if (!messageElement) return;
+
+    const messageId = Number(messageElement.getAttribute('data-message-id'));
+    if (!messageId || messageId === lastHoveredMessageId.current) return;
+
+    if (isDragging === 1) toggleMessageSelection({ messageId: dragStartMessageId.current, withShift: true });
+    setIsDragging(isDragging + 1);
+    toggleMessageSelection({ messageId, withShift: true });
+    lastHoveredMessageId.current = messageId;
+  }, [isDragging, toggleMessageSelection]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(0);
+    dragStartMessageId.current = null;
+    lastHoveredMessageId.current = null;
+  }, []);
 
   function calculateSenderGroups(
     dateGroup: MessageDateGroup, dateGroupIndex: number, dateGroupsArray: MessageDateGroup[],
@@ -327,7 +373,17 @@ const MessageListContent: FC<OwnProps> = ({
   });
 
   return (
-    <div className="messages-container" teactFastList>
+    <div
+      className={buildClassName(
+        'messages-container',
+        Boolean(isDragging) && 'is-selecting'
+      )}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      teactFastList
+    >
       {withHistoryTriggers && <div ref={backwardsTriggerRef} key="backwards-trigger" className="backwards-trigger" />}
       {shouldRenderBotInfo && <MessageListBotInfo isInMessageList key={`bot_info_${chatId}`} chatId={chatId} />}
       {dateGroups.flat()}
@@ -356,4 +412,10 @@ const MessageListContent: FC<OwnProps> = ({
   );
 };
 
-export default memo(MessageListContent);
+export default memo(withGlobal<StateProps>(
+  (global): StateProps => {
+    return {
+      isInSelectMode: selectIsInSelectMode(global),
+    };
+  }
+)(MessageListContent));

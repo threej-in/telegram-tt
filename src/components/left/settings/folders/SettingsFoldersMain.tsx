@@ -27,6 +27,8 @@ import Button from '../../../ui/Button';
 import Draggable from '../../../ui/Draggable';
 import ListItem from '../../../ui/ListItem';
 import Loading from '../../../ui/Loading';
+import { getIsMobile } from '../../../../hooks/useAppLayout';
+import RadioGroup from '../../../ui/RadioGroup';
 
 type OwnProps = {
   isActive?: boolean;
@@ -41,6 +43,7 @@ type StateProps = {
   recommendedChatFolders?: ApiChatFolder[];
   maxFolders: number;
   isPremium?: boolean;
+  isChatFoldersTabHorizontal?: boolean;
 };
 
 type SortState = {
@@ -62,6 +65,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
   isPremium,
   recommendedChatFolders,
   maxFolders,
+  isChatFoldersTabHorizontal,
 }) => {
   const {
     loadRecommendedChatFolders,
@@ -69,7 +73,10 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
     openLimitReachedModal,
     openDeleteChatFolderModal,
     sortChatFolders,
+    setSettingOption,
   } = getActions();
+
+  const isMobile = getIsMobile();
 
   const [state, setState] = useState<SortState>({
     orderedFolderIds: folderIds,
@@ -210,7 +217,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
 
         {canCreateNewFolder && (
           <Button
-          // TODO: Refactor button component to handle icon placemenet with props
+            // TODO: Refactor button component to handle icon placemenet with props
             className="settings-button with-icon mb-2"
             color="primary"
             size="smaller"
@@ -367,6 +374,23 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
           ))}
         </div>
       )}
+
+      {!isMobile && (
+        <div className="settings-item pt-3">
+          <h4 className="settings-item-header mb-3" dir={lang.isRtl ? 'rtl' : undefined}>
+            {lang('TabsView')}
+          </h4>
+          <RadioGroup
+            name="ChatFoldersTabView"
+            options={[
+              { label: lang('ChatFoldersTabVertical'), value: '0' },
+              { label: lang('ChatFoldersTabHorizontal'), value: '1' },
+            ]}
+            selected={isChatFoldersTabHorizontal ? '1' : '0'}
+            onChange={() => setSettingOption({ isChatFoldersTabHorizontal: !isChatFoldersTabHorizontal })}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -374,10 +398,15 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
     const {
-      orderedIds: folderIds,
-      byId: foldersById,
-      recommended: recommendedChatFolders,
-    } = global.chatFolders;
+      chatFolders: {
+        orderedIds: folderIds,
+        byId: foldersById,
+        recommended: recommendedChatFolders,
+      },
+      settings: {
+        byKey: { isChatFoldersTabHorizontal },
+      },
+    } = global;
 
     return {
       folderIds,
@@ -385,6 +414,7 @@ export default memo(withGlobal<OwnProps>(
       isPremium: selectIsCurrentUserPremium(global),
       recommendedChatFolders,
       maxFolders: selectCurrentLimit(global, 'dialogFilters'),
+      isChatFoldersTabHorizontal,
     };
   },
 )(SettingsFoldersMain));

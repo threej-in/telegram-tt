@@ -19,19 +19,21 @@ import MenuItem from './MenuItem';
 import MenuSeparator from './MenuSeparator';
 
 import './Tab.scss';
+import TabIcon from './TabIcon';
+import { TabWithProperties } from './TabList';
+import CustomEmoji from '../common/CustomEmoji';
+import { ApiMessageEntityCustomEmoji } from '../../api/types';
 
 type OwnProps = {
   className?: string;
-  title: TeactNode;
   isActive?: boolean;
-  isBlocked?: boolean;
-  badgeCount?: number;
-  isBadgeActive?: boolean;
+  tab: TabWithProperties;
   previousActiveTab?: number;
   onClick?: (arg: number) => void;
   clickArg?: number;
   contextActions?: MenuItemContextAction[];
   contextRootElementSelector?: string;
+  isChatFoldersTabHorizontal?: boolean;
 };
 
 const classNames = {
@@ -41,16 +43,14 @@ const classNames = {
 
 const Tab: FC<OwnProps> = ({
   className,
-  title,
   isActive,
-  isBlocked,
-  badgeCount,
-  isBadgeActive,
+  tab,
   previousActiveTab,
   onClick,
   clickArg,
   contextActions,
   contextRootElementSelector,
+  isChatFoldersTabHorizontal,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const tabRef = useRef<HTMLDivElement>(null);
@@ -131,6 +131,39 @@ const Tab: FC<OwnProps> = ({
   );
   const getLayout = useLastCallback(() => ({ withPortal: true }));
 
+  const hasCustomEmoji = tab.entities && tab.entities.length > 0 && (
+    tab.entities.some((entity) => entity.type === 'MessageEntityCustomEmoji')
+  );
+
+  const emoticonsMap: Record<string, string> = {
+    '🤖': 'bot',
+    '💬': 'chats',
+    "⭐": 'star',
+    "📢": 'channel',
+    "👥": 'group',
+    "👤": 'user',
+    "📁": 'folder'
+  }
+
+  const folderIconName = () => {
+    if (tab.emoticon && emoticonsMap[tab.emoticon]) return emoticonsMap[tab.emoticon];
+
+    const chatCategory = tab.chatCategory || {};
+    let chatCategoryCount = 0;
+    Object.entries(chatCategory).forEach(([key, value]) => {
+      if (value) chatCategoryCount++;
+    });
+    if (chatCategoryCount > 1) return 'folder';
+    const folderIcon = chatCategory.isAllChatsFolder ? 'chats' :
+      chatCategory.contacts ? 'user' :
+        chatCategory.nonContacts ? 'folder' :
+          chatCategory.bots ? 'bot' :
+            chatCategory.channels ? 'channel' :
+              chatCategory.groups ? 'group' : 'folder';
+    return folderIcon;
+  };
+  hasCustomEmoji && !isChatFoldersTabHorizontal && !tab.emoticon && delete ((tab.title as TeactNode[])[0]);
+
   return (
     <div
       className={buildClassName('Tab', onClick && 'Tab--interactive', className)}
@@ -140,11 +173,23 @@ const Tab: FC<OwnProps> = ({
       ref={tabRef}
     >
       <span className="Tab_inner">
-        {typeof title === 'string' ? renderText(title) : title}
-        {Boolean(badgeCount) && (
-          <span className={buildClassName('badge', isBadgeActive && classNames.badgeActive)}>{badgeCount}</span>
+        <div className="title">
+          {typeof tab.title === 'string' ? renderText(tab.title) : tab.title}
+        </div>
+        {Boolean(tab.badgeCount) && (
+          <span className={buildClassName('badge', tab.isBadgeActive && classNames.badgeActive)}>{tab.badgeCount}</span>
         )}
-        {isBlocked && <Icon name="lock-badge" className="blocked" />}
+        {
+          !isChatFoldersTabHorizontal && (
+            tab.emoticon ? <TabIcon name={folderIconName() as keyof typeof TabIcon} /> :
+              hasCustomEmoji ? tab.entities &&
+                <CustomEmoji
+                  size={32}
+                  isBig={true}
+                  documentId={(tab.entities.find((e) => e.type === 'MessageEntityCustomEmoji') as ApiMessageEntityCustomEmoji)?.documentId} />
+                : <TabIcon name={folderIconName() as keyof typeof TabIcon} />)
+        }
+        {tab.isBlocked && <Icon name="lock-badge" className="blocked" />}
         <i className="platform" />
       </span>
 

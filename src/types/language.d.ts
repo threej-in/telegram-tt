@@ -382,6 +382,7 @@ export interface LangPair {
   'SettingsOfflineNotificationUnsupported': undefined;
   'TextSize': undefined;
   'ChatBackground': undefined;
+  'CustomBackground': undefined;
   'Theme': undefined;
   'AccDescrStickers': undefined;
   'DoubleTapSetting': undefined;

@@ -1,4 +1,4 @@
-import type { FC } from '../../../lib/teact/teact';
+import type { FC, RefObject } from '../../../lib/teact/teact';
 import React, {
   memo, useEffect, useRef, useState,
 } from '../../../lib/teact/teact';
@@ -31,6 +31,7 @@ export type OwnProps = {
   selectedRange?: Range;
   setSelectedRange: (range: Range) => void;
   onClose: () => void;
+  inputRef: RefObject<HTMLDivElement | null>;
 };
 
 interface ISelectedTextFormats {
@@ -40,6 +41,7 @@ interface ISelectedTextFormats {
   strikethrough?: boolean;
   monospace?: boolean;
   spoiler?: boolean;
+  quote?: boolean;
 }
 
 const TEXT_FORMAT_BY_TAG_NAME: Record<string, keyof ISelectedTextFormats> = {
@@ -51,6 +53,7 @@ const TEXT_FORMAT_BY_TAG_NAME: Record<string, keyof ISelectedTextFormats> = {
   DEL: 'strikethrough',
   CODE: 'monospace',
   SPAN: 'spoiler',
+  BLOCKQUOTE: 'quote',
 };
 const fragmentEl = document.createElement('div');
 
@@ -60,6 +63,7 @@ const TextFormatter: FC<OwnProps> = ({
   selectedRange,
   setSelectedRange,
   onClose,
+  inputRef,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
@@ -101,16 +105,28 @@ const TextFormatter: FC<OwnProps> = ({
     if (!isOpen || !selectedRange) {
       return;
     }
-
     const selectedFormats: ISelectedTextFormats = {};
-    let { parentElement } = selectedRange.commonAncestorContainer;
-    while (parentElement && parentElement.id !== EDITABLE_INPUT_ID) {
-      const textFormat = TEXT_FORMAT_BY_TAG_NAME[parentElement.tagName];
-      if (textFormat) {
-        selectedFormats[textFormat] = true;
-      }
+    const inputEl = document.getElementById(EDITABLE_INPUT_ID);
 
-      parentElement = parentElement.parentElement;
+    const treeWalker = document.createTreeWalker(
+      inputEl!,
+      NodeFilter.SHOW_ELEMENT,
+      {
+        acceptNode: (node) => {
+          // Filter to only include nodes that are inside the selection range
+          const nodeRange = document.createRange();
+          nodeRange.selectNodeContents(node);
+          return selectedRange.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      }
+    );
+
+    while (treeWalker.nextNode()) {
+      const currentNode = treeWalker.currentNode as HTMLElement;
+      if (currentNode.tagName) {
+        const textFormat = TEXT_FORMAT_BY_TAG_NAME[currentNode.tagName];
+        textFormat && (selectedFormats[textFormat] = true);
+      }
     }
 
     setSelectedTextFormats(selectedFormats);
@@ -130,7 +146,9 @@ const TextFormatter: FC<OwnProps> = ({
 
   const updateSelectedRange = useLastCallback(() => {
     const selection = window.getSelection();
+
     if (selection) {
+      selection.isCollapsed ? selection.extend : undefined;
       setSelectedRange(selection.getRangeAt(0));
     }
   });
@@ -184,22 +202,31 @@ const TextFormatter: FC<OwnProps> = ({
     updateInputStyles();
   }
 
-  function getFormatButtonClassName(key: keyof ISelectedTextFormats) {
+  function isFormattingAllowed(key: keyof ISelectedTextFormats) {
     if (selectedTextFormats[key]) {
-      return 'active';
+      return true;
     }
 
     if (key === 'monospace' || key === 'strikethrough') {
       if (Object.keys(selectedTextFormats).some(
         (fKey) => fKey !== key && Boolean(selectedTextFormats[fKey as keyof ISelectedTextFormats]),
       )) {
-        return 'disabled';
+        return false;
       }
     } else if (selectedTextFormats.monospace || selectedTextFormats.strikethrough) {
-      return 'disabled';
+      return false;
     }
 
     return undefined;
+  }
+
+  function getFormatButtonClassName(key: keyof ISelectedTextFormats) {
+    const isAllowed = isFormattingAllowed(key);
+    if (isAllowed === false) {
+      return 'disabled';
+    }
+
+    return isAllowed ? 'active' : '';
   }
 
   const handleSpoilerText = useLastCallback(() => {
@@ -266,6 +293,36 @@ const TextFormatter: FC<OwnProps> = ({
     }));
   });
 
+  const handleQuoteText = useLastCallback(() => {
+    if (selectedTextFormats.quote) {
+      const element = getSelectedElement();
+      if (
+        !selectedRange
+        || !element
+        || element.tagName !== 'BLOCKQUOTE'
+        || !element.textContent
+      ) {
+        return;
+      }
+
+      element.replaceWith(element.textContent);
+      inputRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
+      setSelectedTextFormats((selectedFormats) => ({
+        ...selectedFormats,
+        quote: false,
+      }));
+      return;
+    }
+
+    const text = getSelectedText();
+    document.execCommand('insertHTML', false, `<blockquote>${text}</blockquote>`);
+    updateSelectedRange();
+    setSelectedTextFormats((selectedFormats) => ({
+      ...selectedFormats,
+      quote: !selectedFormats.quote,
+    }));
+  });
+
   const handleStrikethroughText = useLastCallback(() => {
     if (selectedTextFormats.strikethrough) {
       const element = getSelectedElement();
@@ -279,6 +336,7 @@ const TextFormatter: FC<OwnProps> = ({
       }
 
       element.replaceWith(element.textContent);
+      inputRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
       setSelectedTextFormats((selectedFormats) => ({
         ...selectedFormats,
         strikethrough: false,
@@ -305,6 +363,7 @@ const TextFormatter: FC<OwnProps> = ({
       }
 
       element.replaceWith(element.textContent);
+      inputRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
       setSelectedTextFormats((selectedFormats) => ({
         ...selectedFormats,
         monospace: false,
@@ -345,6 +404,18 @@ const TextFormatter: FC<OwnProps> = ({
   });
 
   const handleKeyDown = useLastCallback((e: KeyboardEvent) => {
+
+    const FORMAT_OPTION_BY_KEY: Record<string, keyof ISelectedTextFormats> = {
+      b: 'bold',
+      u: 'underline',
+      i: 'italic',
+      m: 'monospace',
+      s: 'strikethrough',
+      p: 'spoiler',
+      q: 'quote',
+    };
+
+
     const HANDLERS_BY_KEY: Record<string, AnyToVoidFunction> = {
       k: openLinkControl,
       b: handleBoldText,
@@ -353,6 +424,7 @@ const TextFormatter: FC<OwnProps> = ({
       m: handleMonospaceText,
       s: handleStrikethroughText,
       p: handleSpoilerText,
+      q: handleQuoteText,
     };
 
     const handler = HANDLERS_BY_KEY[getKeyFromEvent(e)];
@@ -367,6 +439,8 @@ const TextFormatter: FC<OwnProps> = ({
 
     e.preventDefault();
     e.stopPropagation();
+
+    if (false === isFormattingAllowed(FORMAT_OPTION_BY_KEY[getKeyFromEvent(e)])) return;
     handler();
   });
 
@@ -448,6 +522,14 @@ const TextFormatter: FC<OwnProps> = ({
           onClick={handleUnderlineText}
         >
           <Icon name="underlined" />
+        </Button>
+        <Button
+          color="translucent"
+          ariaLabel="Quote text"
+          className={getFormatButtonClassName('quote')}
+          onClick={handleQuoteText}
+        >
+          <Icon name="quote" style={`fontSize: 1.2rem`} />
         </Button>
         <Button
           color="translucent"

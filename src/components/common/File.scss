@@ -1,4 +1,6 @@
 .File {
+  display: flex;
+  align-items: center;
   --secondary-color: var(--color-text-secondary);
 
   .Message.own & {
@@ -12,9 +14,6 @@
       min-width: 11rem;
     }
   }
-
-  display: flex;
-  align-items: center;
 
   .file-icon-container {
     position: relative;

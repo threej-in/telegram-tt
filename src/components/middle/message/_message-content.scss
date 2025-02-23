@@ -13,11 +13,11 @@
   background-color: var(--pattern-color);
   max-width: 10rem;
 
+  box-shadow: 0 1px 2px var(--color-default-shadow);
+  
   @media (max-width: 600px) {
     max-width: calc(90vw - 13rem);
   }
-
-  box-shadow: 0 1px 2px var(--color-default-shadow);
 }
 
 .message-content {
@@ -430,8 +430,8 @@
   }
 
   .message-subheader .forward-custom-shape-subheader {
-    @include subheader-styles();
     min-width: 8rem;
+    @include subheader-styles();
     .message-title {
       color: white;
     }
@@ -598,18 +598,18 @@
       gap: 0.5rem;
 
       & > .message-title {
-        @include subheader-styles();
         top: 0.125rem;
-
         position: absolute;
         left: 100%;
+        color: white;
+        @include subheader-styles();
+
 
         .Message.own & {
           left: initial;
           right: 100%;
         }
 
-        color: white;
         .admin-title {
           color: white;
         }

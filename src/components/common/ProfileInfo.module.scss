@@ -148,6 +148,11 @@
     color: var(--color-white) !important;
   }
 
+  >div{
+    display: flex;
+    pointer-events: all;
+  }
+
   &:dir(rtl) {
     .status {
       text-align: right;

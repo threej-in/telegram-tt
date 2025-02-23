@@ -45,7 +45,6 @@ import SearchInput from '../../ui/SearchInput';
 import ShowTransition from '../../ui/ShowTransition';
 import ConnectionStatusOverlay from '../ConnectionStatusOverlay';
 import LeftSideMenuItems from './LeftSideMenuItems';
-import StatusButton from './StatusButton';
 
 import './LeftMainHeader.scss';
 
@@ -60,6 +59,7 @@ type OwnProps = {
   onSelectContacts: NoneToVoidFunction;
   onSelectArchived: NoneToVoidFunction;
   onReset: NoneToVoidFunction;
+  dropdownRef?: { current: { toggle: () => void } };
 };
 
 type StateProps =
@@ -70,6 +70,7 @@ type StateProps =
     searchDate?: number;
     theme: ISettings['theme'];
     isMessageListOpen: boolean;
+    isChatFoldersTabHorizontal: boolean;
     isCurrentUserPremium?: boolean;
     isConnectionStatusMinimized: ISettings['isConnectionStatusMinimized'];
     areChatsLoaded?: boolean;
@@ -88,7 +89,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
   isClosingSearch,
   searchQuery,
   isLoading,
-  isCurrentUserPremium,
+  isChatFoldersTabHorizontal,
   shouldSkipTransition,
   globalSearchChatId,
   searchDate,
@@ -101,6 +102,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
   areChatsLoaded,
   hasPasscode,
   canSetPasscode,
+  dropdownRef,
   onSearchQuery,
   onSelectSettings,
   onSelectContacts,
@@ -163,8 +165,10 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
         ripple={hasMenu && !isMobile}
         size="smaller"
         color="translucent"
-        className={isOpen ? 'active' : ''}
-        // eslint-disable-next-line react/jsx-no-bind
+        className={buildClassName(
+          isOpen ? 'active' : '',
+          !(isMobile || isChatFoldersTabHorizontal) && 'hide',
+        )}
         onClick={hasMenu ? onTrigger : () => onReset()}
         ariaLabel={hasMenu ? oldLang('AccDescrOpenMenu2') : 'Return to chat list'}
       >
@@ -176,7 +180,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
         />
       </Button>
     );
-  }, [hasMenu, isMobile, oldLang, onReset, shouldSkipTransition]);
+  }, [hasMenu, isMobile, oldLang, onReset, shouldSkipTransition, isChatFoldersTabHorizontal]);
 
   const handleSearchFocus = useLastCallback(() => {
     if (!searchQuery) {
@@ -218,8 +222,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
   const headerRef = useRef<HTMLDivElement>(null);
   useElectronDrag(headerRef);
 
-  const withStoryToggler = !isSearchFocused
-    && !selectedSearchDate && !globalSearchChatId && !areContactsVisible;
+  const withStoryToggler = (content !== LeftColumnContent.GlobalSearch) && !isSearchFocused && !selectedSearchDate && !globalSearchChatId && !areContactsVisible;
 
   const searchContent = useMemo(() => {
     return (
@@ -250,17 +253,41 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     );
   }, [globalSearchChatId, selectedSearchDate]);
 
+  function rightAlignedElements() {
+    return (
+      <>
+        {hasPasscode && content == LeftColumnContent.ChatList && (
+          <Button
+            round
+            size="tiny"
+            color="translucent"
+            ariaLabel={`${oldLang('ShortcutsController.Others.LockByPasscode')} (Ctrl+Shift+L)`}
+            onClick={handleLockScreen}
+            style='background-color: transparent!important;'
+          >
+            <Icon name="unlock-badge" />
+          </Button>
+        )}
+        <StoryToggler
+          canShow={withStoryToggler}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="LeftMainHeader">
       <div id="LeftMainHeader" className="left-header" ref={headerRef}>
-        {oldLang.isRtl && <div className="DropdownMenuFiller" />}
+        {oldLang.isRtl && isChatFoldersTabHorizontal && <div className="DropdownMenuFiller" />}
         <DropdownMenu
+          triggerRef={dropdownRef}
           trigger={MainButton}
           footer={`${APP_NAME} ${versionString}`}
           className={buildClassName(
             'main-menu',
             oldLang.isRtl && 'rtl',
             shouldHideSearch && oldLang.isRtl && 'right-aligned',
+            !(isMobile || isChatFoldersTabHorizontal) && 'position-absolute',
             shouldDisableDropdownMenuTransitionRef.current && oldLang.isRtl && 'disable-transition',
           )}
           forceOpen={isBotMenuOpen}
@@ -276,6 +303,19 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
             onBotMenuClosed={unmarkBotMenuOpen}
           />
         </DropdownMenu>
+        {!isMobile && shouldHideSearch && (
+          <Button
+            round
+            size="tiny"
+            color="translucent"
+            ariaLabel={oldLang('Search')}
+            onClick={handleSearchFocus}
+            style='margin-left: 0.4rem'
+          >
+            <Icon name="search" />
+          </Button>
+        )}
+
         <SearchInput
           inputId="telegram-search-input"
           resultsItemSelector=".LeftSearch .ListItem-button"
@@ -295,26 +335,11 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
           onReset={onReset}
           onFocus={handleSearchFocus}
           onSpinnerClick={connectionStatusPosition === 'minimized' ? toggleConnectionStatus : undefined}
+          content={content}
+          rightElement={rightAlignedElements()}
         >
           {searchContent}
-          <StoryToggler
-            canShow={withStoryToggler}
-          />
         </SearchInput>
-        {isCurrentUserPremium && <StatusButton />}
-        {hasPasscode && (
-          <Button
-            round
-            ripple={!isMobile}
-            size="smaller"
-            color="translucent"
-            ariaLabel={`${oldLang('ShortcutsController.Others.LockByPasscode')} (Ctrl+Shift+L)`}
-            onClick={handleLockScreen}
-            className={buildClassName(!isCurrentUserPremium && 'extra-spacing')}
-          >
-            <Icon name="lock" />
-          </Button>
-        )}
         <ShowTransition
           isOpen={connectionStatusPosition === 'overlay'}
           isCustom
@@ -339,6 +364,9 @@ export default memo(withGlobal<OwnProps>(
     } = tabState.globalSearch;
     const {
       connectionState, isSyncing, isFetchingDifference,
+      settings: {
+        byKey: { isChatFoldersTabHorizontal },
+      },
     } = global;
     const { isConnectionStatusMinimized } = global.settings.byKey;
 
@@ -354,6 +382,7 @@ export default memo(withGlobal<OwnProps>(
       isMessageListOpen: Boolean(selectCurrentMessageList(global)),
       isConnectionStatusMinimized,
       isCurrentUserPremium: selectIsCurrentUserPremium(global),
+      isChatFoldersTabHorizontal,
       areChatsLoaded: Boolean(global.chats.listIds.active),
       hasPasscode: Boolean(global.passcode.hasPasscode),
       canSetPasscode: selectCanSetPasscode(global),

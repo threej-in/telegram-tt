@@ -12,3 +12,46 @@
 .activated {
   background-color: var(--color-interactive-element-hover);
 }
+
+.searchWrapper {
+  padding: 0.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.searchInput {
+  width: 100%;
+  margin: 0;
+
+  input {
+    padding: 0.5rem;
+    border-radius: 0.7rem;
+    background: var(--color-background);
+    border: 1px solid gray !important;
+    box-shadow: none !important;
+    color: var(--color-text);
+  }
+}
+
+.folderIconWrapper {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.5rem;
+}
+
+.folderIcon {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+  filter: invert(0.5);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+  }
+}

@@ -140,6 +140,7 @@ type StateProps = {
   noRightColumnAnimation?: boolean;
   withInterfaceAnimations?: boolean;
   isSynced?: boolean;
+  isChatFoldersTabHorizontal?: boolean;
 };
 
 const APP_OUTDATED_TIMEOUT_MS = 5 * 60 * 1000; // 5 min
@@ -193,6 +194,7 @@ const Main = ({
   noRightColumnAnimation,
   isSynced,
   currentUserId,
+  isChatFoldersTabHorizontal
 }: OwnProps & StateProps) => {
   const {
     initMain,
@@ -502,6 +504,7 @@ const Main = ({
   }, [isMiddleColumnOpen, isRightColumnOpen, noRightColumnAnimation, forceUpdate]);
 
   const className = buildClassName(
+    !isMobile && !isChatFoldersTabHorizontal && 'Vertical-tabs-visible',
     willAnimateLeftColumnRef.current && 'left-column-animating',
     willAnimateRightColumnRef.current && 'right-column-animating',
     isNarrowMessageList && 'narrow-message-list',
@@ -601,6 +604,7 @@ export default memo(withGlobal<OwnProps>(
       settings: {
         byKey: {
           wasTimeFormatSetManually,
+          isChatFoldersTabHorizontal,
         },
       },
       currentUserId,
@@ -683,6 +687,7 @@ export default memo(withGlobal<OwnProps>(
       requestedDraft,
       noRightColumnAnimation,
       isSynced: global.isSynced,
+      isChatFoldersTabHorizontal,
     };
   },
 )(Main));

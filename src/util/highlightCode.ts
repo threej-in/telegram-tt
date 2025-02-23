@@ -90,9 +90,10 @@ async function ensureLanguage(language: string) {
 
 function loadFirstPartyLanguage(langCode: string) {
   // Funky webpack bug https://github.com/webpack/webpack/issues/13865
+  const fileLocation = `../../node_modules/highlight.js/lib/languages/${langCode}`;
   const languagePromise = import(
     /* webpackChunkName: "Highlight for [request]" */
-    `../../node_modules/highlight.js/lib/languages/${langCode}`
+    fileLocation
   );
   languagePromises.set(langCode, languagePromise);
   return languagePromise;

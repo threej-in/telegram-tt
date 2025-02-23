@@ -40,6 +40,7 @@ import TopicIcon from './TopicIcon';
 
 import './ProfileInfo.scss';
 import styles from './ProfileInfo.module.scss';
+import StatusButton from '../left/main/StatusButton';
 
 type OwnProps = {
   peerId: string;
@@ -362,14 +363,13 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
 
       <div className={styles.info} dir={lang.isRtl ? 'rtl' : 'auto'}>
         {(user || chat) && (
-          <FullNameTitle
-            peer={(user || chat)!}
-            withEmojiStatus
-            emojiStatusSize={EMOJI_STATUS_SIZE}
-            onEmojiStatusClick={handleStatusClick}
-            noLoopLimit
-            canCopyTitle
-          />
+          <div>
+            <FullNameTitle
+              peer={(user || chat)!}
+              canCopyTitle
+            />
+            <StatusButton />
+          </div>
         )}
         {renderStatus()}
       </div>

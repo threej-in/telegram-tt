@@ -25,6 +25,7 @@ import SettingsExperimental from './SettingsExperimental';
 import SettingsGeneral from './SettingsGeneral';
 import SettingsGeneralBackground from './SettingsGeneralBackground';
 import SettingsGeneralBackgroundColor from './SettingsGeneralBackgroundColor';
+import SettingsGeneralCustomBackground from './SettingsGeneralCustomBackground';
 import SettingsHeader from './SettingsHeader';
 import SettingsLanguage from './SettingsLanguage';
 import SettingsMain from './SettingsMain';
@@ -245,6 +246,7 @@ const Settings: FC<OwnProps> = ({
             isActive={isScreenActive
               || activeScreen === SettingsScreens.GeneralChatBackgroundColor
               || activeScreen === SettingsScreens.GeneralChatBackground
+              || activeScreen === SettingsScreens.GeneralCustomBackground
               || activeScreen === SettingsScreens.QuickReaction
               || activeScreen === SettingsScreens.CustomEmoji
               || isPrivacyScreen || isFoldersScreen}
@@ -306,6 +308,13 @@ const Settings: FC<OwnProps> = ({
       case SettingsScreens.GeneralChatBackgroundColor:
         return (
           <SettingsGeneralBackgroundColor
+            isActive={isScreenActive}
+            onReset={handleReset}
+          />
+        );
+      case SettingsScreens.GeneralCustomBackground:
+        return (
+          <SettingsGeneralCustomBackground
             isActive={isScreenActive}
             onReset={handleReset}
           />

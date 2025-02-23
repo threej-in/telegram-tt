@@ -1,0 +1,33 @@
+.WebGLBackground {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: block;
+  top: 0;
+  left: 0;
+  z-index: 0;
+
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  &-pattern {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    mix-blend-mode: soft-light;
+    background: center repeat;
+    background-size: var(--bgp-size) auto;
+    background-image: var(--bgp-image);
+    background-color: var(--bgp-background);
+    opacity: .5;
+  }
+}

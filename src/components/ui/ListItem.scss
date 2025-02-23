@@ -66,18 +66,8 @@
     overflow: hidden;
     white-space: nowrap;
     color: var(--color-text);
-    border-radius: var(--border-radius-default);
     --ripple-color: rgba(0, 0, 0, 0.08);
     text-decoration: none;
-
-    body.is-ios &,
-    body.is-android & {
-      border-radius: 0;
-    }
-
-    @media (max-width: 600px) {
-      border-radius: 0;
-    }
 
     > .ListItem-main-icon {
       font-size: 1.5rem;
@@ -205,7 +195,7 @@
     }
 
     .ListItem-button {
-      padding: 0.5625rem;
+      padding: 0.5625rem 0.2rem 0.5625rem 0.8rem;
     }
 
     &.contact-list-item {
@@ -220,6 +210,7 @@
 
     .Avatar {
       margin-right: 0.5rem;
+      z-index: 0;
     }
 
     .info {

@@ -153,6 +153,13 @@ const SettingsGeneral: FC<OwnProps & StateProps> = ({
           {lang('ChatBackground')}
         </ListItem>
 
+        <ListItem
+          icon="colorize"
+          onClick={() => onScreenSelect(SettingsScreens.GeneralCustomBackground)}
+        >
+          {lang('CustomBackground')}
+        </ListItem>
+
         {IS_ELECTRON && IS_WINDOWS && (
           <Checkbox
             label={lang('SettingsTray')}

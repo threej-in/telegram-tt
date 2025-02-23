@@ -636,6 +636,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
         selectedRange={selectedRange}
         setSelectedRange={setSelectedRange}
         onClose={handleCloseTextFormatter}
+        inputRef={inputRef}
       />
       {forcedPlaceholder && <span className="forced-placeholder">{renderText(forcedPlaceholder!)}</span>}
     </div>

@@ -109,6 +109,8 @@ const SettingsHeader: FC<OwnProps> = ({
         return <h3>{oldLang('ChatBackground')}</h3>;
       case SettingsScreens.GeneralChatBackgroundColor:
         return <h3>{oldLang('SetColor')}</h3>;
+      case SettingsScreens.GeneralCustomBackground:
+        return <h3>{oldLang('CustomBackground')}</h3>;
 
       case SettingsScreens.PrivacyPhoneNumber:
         return <h3>{oldLang('PrivacyPhone')}</h3>;

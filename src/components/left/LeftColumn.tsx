@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import React, {
-  memo, useEffect, useMemo, useState,
+  memo, useEffect, useMemo, useState, useRef,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
@@ -30,6 +30,7 @@ import NewChat from './newChat/NewChat.async';
 import Settings from './settings/Settings.async';
 
 import './LeftColumn.scss';
+import ChatFoldersTab, { TAB_VIEW } from '../ui/ChatFoldersTab';
 
 interface OwnProps {
   ref: RefObject<HTMLDivElement>;
@@ -132,6 +133,8 @@ function LeftColumn({
       setContactsFilter('');
       setGlobalSearchClosing({ isClosing: true });
       resetChatCreation();
+      (document.activeElement as HTMLElement)?.blur();
+
       setTimeout(() => {
         setGlobalSearchQuery({ query: '' });
         setGlobalSearchDate({ date: undefined });
@@ -184,6 +187,9 @@ function LeftColumn({
           return;
         case SettingsScreens.GeneralChatBackgroundColor:
           setSettingsScreen(SettingsScreens.GeneralChatBackground);
+          return;
+        case SettingsScreens.GeneralCustomBackground:
+          setSettingsScreen(SettingsScreens.General);
           return;
 
         case SettingsScreens.PrivacyPhoneNumber:
@@ -345,7 +351,7 @@ function LeftColumn({
     }
 
     if (content === LeftColumnContent.ChatList && isFirstChatFolderActive) {
-      setContent(LeftColumnContent.GlobalSearch);
+      // setContent(LeftColumnContent.GlobalSearch);
 
       return;
     }
@@ -473,6 +479,8 @@ function LeftColumn({
     });
   }, [prevSettingsScreenRef, ref]);
 
+  const dropdownRef = useRef<{ toggle: () => void }>({ toggle: () => {} });
+
   function renderContent(isActive: boolean) {
     switch (contentType) {
       case ContentType.Archived:
@@ -540,26 +548,36 @@ function LeftColumn({
             isElectronUpdateAvailable={isElectronUpdateAvailable}
             isForumPanelOpen={isForumPanelOpen}
             onTopicSearch={handleTopicSearch}
+            dropdownRef={dropdownRef}
           />
         );
     }
   }
 
   return (
-    <Transition
-      ref={ref}
-      name={shouldSkipHistoryAnimations ? 'none' : LAYERS_ANIMATION_NAME}
-      renderCount={RENDER_COUNT}
-      activeKey={contentType}
-      shouldCleanup
-      cleanupExceptionKey={ContentType.Main}
-      shouldWrap
-      wrapExceptionKey={ContentType.Main}
-      id="LeftColumn"
-      withSwipeControl
-    >
-      {renderContent}
-    </Transition>
+    <>
+      <ChatFoldersTab
+        initiator={TAB_VIEW.LEFT}
+        shouldSkipTransition={shouldSkipHistoryAnimations}
+        onFolderTabsChange={() => { }}
+        dropdownRef={dropdownRef}
+        setContent={setContent}
+      />
+      <Transition
+        ref={ref}
+        name={shouldSkipHistoryAnimations ? 'none' : LAYERS_ANIMATION_NAME}
+        renderCount={RENDER_COUNT}
+        activeKey={contentType}
+        shouldCleanup
+        cleanupExceptionKey={ContentType.Main}
+        shouldWrap
+        wrapExceptionKey={ContentType.Main}
+        id="LeftColumn"
+        withSwipeControl
+        >
+        {renderContent}
+      </Transition>
+    </>
   );
 }
 

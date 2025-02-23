@@ -14,6 +14,16 @@ import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
 import Tab from './Tab';
 
 import './TabList.scss';
+import { ApiMessageEntity } from '../../api/types';
+
+export type TabChatCategory = {
+  isAllChatsFolder?: boolean;
+  contacts?: boolean;
+  nonContacts?: boolean;
+  bots?: boolean;
+  groups?: boolean;
+  channels?: boolean;
+};
 
 export type TabWithProperties = {
   id?: number;
@@ -22,7 +32,12 @@ export type TabWithProperties = {
   isBlocked?: boolean;
   isBadgeActive?: boolean;
   contextActions?: MenuItemContextAction[];
+  emoticon?: string;
+  entities?: ApiMessageEntity[];
+  chatCategory?: TabChatCategory;
+  isAllChatsFolder?: boolean;
 };
+
 
 type OwnProps = {
   tabs: readonly TabWithProperties[];
@@ -31,6 +46,7 @@ type OwnProps = {
   tabClassName?: string;
   onSwitchTab: (index: number) => void;
   contextRootElementSelector?: string;
+  isChatFoldersTabHorizontal?: boolean;
 };
 
 const TAB_SCROLL_THRESHOLD_PX = 16;
@@ -40,6 +56,7 @@ const SCROLL_DURATION = IS_IOS ? 450 : IS_ANDROID ? 400 : 300;
 const TabList: FC<OwnProps> = ({
   tabs, activeTab, onSwitchTab,
   contextRootElementSelector, className, tabClassName,
+  isChatFoldersTabHorizontal,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,17 +99,15 @@ const TabList: FC<OwnProps> = ({
       {tabs.map((tab, i) => (
         <Tab
           key={tab.id}
-          title={tab.title}
           isActive={i === activeTab}
-          isBlocked={tab.isBlocked}
-          badgeCount={tab.badgeCount}
-          isBadgeActive={tab.isBadgeActive}
+          tab={tab}
           previousActiveTab={previousActiveTab}
           onClick={onSwitchTab}
           clickArg={i}
           contextActions={tab.contextActions}
           contextRootElementSelector={contextRootElementSelector}
           className={tabClassName}
+          isChatFoldersTabHorizontal={isChatFoldersTabHorizontal}
         />
       ))}
     </div>

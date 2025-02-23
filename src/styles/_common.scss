@@ -101,12 +101,14 @@
 .chat-list {
   background: var(--color-background);
   height: 100%;
-  padding: 0.5rem;
+  padding: 0;
+  padding-inline-end: 0.35rem;
+  overflow: hidden;
 
-  @include mixins.adapt-padding-to-scrollbar(0.5rem);
-
-  overflow-x: hidden;
-  overflow-y: scroll;
+  &:hover {
+    overflow-y: scroll;
+    padding-inline-end: 0rem;
+  }
 
   &.forum-panel-open {
     .info {

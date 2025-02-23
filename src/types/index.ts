@@ -139,6 +139,7 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   shouldDebugExportedSenders?: boolean;
   shouldWarnAboutSvg?: boolean;
   shouldSkipWebAppCloseConfirmation: boolean;
+  isChatFoldersTabHorizontal: boolean;
 }
 
 export type IAnchorPosition = {
@@ -163,6 +164,7 @@ export enum SettingsScreens {
   General,
   GeneralChatBackground,
   GeneralChatBackgroundColor,
+  GeneralCustomBackground,
   Privacy,
   PrivacyPhoneNumber,
   PrivacyAddByPhone,

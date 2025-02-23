@@ -1,10 +1,10 @@
 import type { FC } from '../../../../lib/teact/teact';
 import React, {
-  memo, useCallback, useEffect, useMemo, useState,
+  memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../../global';
 
-import type { ApiChatlistExportedInvite } from '../../../../api/types';
+import type { ApiChatlistExportedInvite, ApiSticker, ApiMessageEntityCustomEmoji } from '../../../../api/types';
 import type {
   FolderEditDispatch,
   FoldersState,
@@ -31,6 +31,12 @@ import FloatingActionButton from '../../../ui/FloatingActionButton';
 import InputText from '../../../ui/InputText';
 import ListItem from '../../../ui/ListItem';
 import Spinner from '../../../ui/Spinner';
+import useFlag from '../../../../hooks/useFlag';
+import Button from '../../../ui/Button';
+import CustomEmoji from '../../../common/CustomEmoji';
+import CustomEmojiPicker, { FOLDER_ICONS } from '../../../common/CustomEmojiPicker';
+import Menu from '../../../ui/Menu';
+import styles from '../../main/StatusPickerMenu.module.scss';
 
 type OwnProps = {
   state: FoldersState;
@@ -95,6 +101,18 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
   const [isIncludedChatsListExpanded, setIsIncludedChatsListExpanded] = useState(false);
   const [isExcludedChatsListExpanded, setIsExcludedChatsListExpanded] = useState(false);
 
+  const [menuPosition, setMenuPosition] = useState<{ x: number }>({ x: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const [isStickerPickerOpen, openStickerPicker, closeStickerPicker] = useFlag(false);
+  useEffect(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({ x: rect.right });
+    }
+  }, [isStickerPickerOpen]);
+
+
   useEffect(() => {
     if (isRemoved) {
       onReset();
@@ -145,7 +163,8 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
   ]);
 
   const lang = useOldLang();
-
+  const hasCustomEmoji = state.folder.title.entities && state.folder.title.entities.length > 0 && state.folder.title.entities[0].type === 'MessageEntityCustomEmoji';
+  const customEmojiDocumentId = hasCustomEmoji && (state.folder.title.entities && state.folder.title.entities[0] as ApiMessageEntityCustomEmoji)?.documentId;
   useHistoryBack({
     isActive,
     onBack,
@@ -153,7 +172,42 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
 
   const handleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const { currentTarget } = event;
-    dispatch({ type: 'setTitle', payload: currentTarget.value.trim() });
+    state.folder.title.text = currentTarget.value.trim();
+    state.folder.title.entities = [];
+    dispatch({
+      type: 'setTitle',
+      payload: state.folder.title,
+    });
+  }, [dispatch]);
+
+  const handleStickerSelect = useCallback((sticker: ApiSticker) => {
+    closeStickerPicker();
+    state.folder.emoticon = undefined;
+    dispatch({
+      type: 'setTitle',
+      payload: {
+        text: sticker.emoji + state.folder.title.text,
+        entities: [
+          {
+            type: 'MessageEntityCustomEmoji',
+            offset: 0,
+            length: sticker.emoji?.length || 1,
+            documentId: sticker.id,
+          },
+        ],
+      },
+    });
+  }, [dispatch]);
+
+  const handleFolderIconSelect = useCallback((icon: string) => {
+    closeStickerPicker();
+
+    dispatch({
+      type: 'setEmoticon',
+      payload: {
+        emoticon: icon,
+      },
+    });
   }, [dispatch]);
 
   const handleSubmit = useCallback(() => {
@@ -283,26 +337,61 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
     <div className="settings-fab-wrapper">
       <div className="settings-content no-border custom-scroll">
         <div className="settings-content-header">
-          <AnimatedIconWithPreview
-            size={STICKER_SIZE_FOLDER_SETTINGS}
-            tgsUrl={LOCAL_TGS_URLS.FoldersNew}
-            play={String(state.folderId)}
-            className="settings-content-icon"
-          />
-
+          {state.folder.emoticon
+            ? <img src={FOLDER_ICONS.find((item) => item.emoji === state.folder.emoticon)?.src} alt="Folder Emoji" className='settings-content-icon' style='filter: invert(0.5)' />
+            : hasCustomEmoji && customEmojiDocumentId
+              ? <CustomEmoji documentId={customEmojiDocumentId} className='settings-content-icon' size={100} />
+              : <AnimatedIconWithPreview
+                size={STICKER_SIZE_FOLDER_SETTINGS}
+                tgsUrl={LOCAL_TGS_URLS.FoldersNew}
+                play={String(state.folderId)}
+                className="settings-content-icon"
+              />
+          }
           {isCreating && (
             <p className="settings-item-description mb-3" dir={lang.isRtl ? 'rtl' : undefined}>
               {lang('FilterIncludeInfo')}
             </p>
           )}
 
-          <InputText
-            className="mb-0"
-            label={lang('FilterNameHint')}
-            value={state.folder.title.text}
-            onChange={handleChange}
-            error={state.error && state.error === ERROR_NO_TITLE ? ERROR_NO_TITLE : undefined}
-          />
+          <div className='folder-input-container'>
+            <InputText
+              className="mb-0"
+              label={lang('FilterNameHint')}
+              value={state.folder.title.text}
+              onChange={handleChange}
+              error={state.error && state.error === ERROR_NO_TITLE ? ERROR_NO_TITLE : undefined}
+            />
+
+            <Button
+              ref={buttonRef}
+              onMouseEnter={openStickerPicker}
+              className='folder-icon-container'
+            >
+              {state.folder.emoticon || (hasCustomEmoji && customEmojiDocumentId && <CustomEmoji documentId={customEmojiDocumentId} />) || '🗂️'}
+            </Button>
+
+            <Menu
+              isOpen={isStickerPickerOpen}
+              noCompact
+              positionX="right"
+              bubbleClassName={styles.menuContent}
+              onClose={closeStickerPicker}
+              transformOriginX={menuPosition.x}
+            >
+              <CustomEmojiPicker
+                idPrefix="status-emoji-set-"
+                loadAndPlay={isStickerPickerOpen}
+                isHidden={!isStickerPickerOpen}
+                isStatusPicker
+                isTranslucent
+                isFolderPicker
+                onCustomEmojiSelect={handleStickerSelect}
+                onFolderIconSelect={handleFolderIconSelect}
+              />
+            </Menu>
+          </div>
+
         </div>
 
         {!isOnlyInvites && (
